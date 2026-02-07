@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hogwarts Quiz</title>
+
+<style>
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: Arial, sans-serif;
+  background: url("background.jpeg") center/cover no-repeat;
+  color: white;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* BLACK SCREEN */
+#blackScreen {
+  position: fixed;
+  inset: 0;
+  background: black;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.5s;
+  z-index: 9999;
+}
+#blackScreen.active {
+  opacity: 1;
+}
+
+.box {
+  background: rgba(0,0,0,0.65);
+  padding: 25px;
+  width: 95%;
+  max-width: 420px;
+  text-align: center;
+  border-radius: 16px;
+}
+
+button {
+  width: 100%;
+  padding: 12px;
+  margin-top: 12px;
+  font-size: 16px;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+input {
+  width: 90%;
+  padding: 10px;
+  margin: 8px 0;
+  border-radius: 8px;
+  border: none;
+}
+
+.logo {
+  width: 160px;
+  margin: 16px auto;
+}
+
+.house-img {
+  width: 210px;
+  margin-top: 18px;
+}
+
+#errorText {
+  color: #ff8080;
+  display: none;
+}
+
+#finalText {
+  font-size: 26px;
+  font-weight: bold;
+  letter-spacing: 2px;
+}
+
+#finalUser {
+  margin-top: 12px;
+  font-size: 18px;
+  opacity: 0.9;
+}
+
+.watermark-baru {
+  position: absolute;
+  bottom: 15px; /* Jarak dari bawah */
+  right: 15px;  /* Jarak dari kanan */
+  color: rgba(255, 255, 255, 0.5); /* Warna putih transparan */
+  font-size: 14px;
+  font-family: sans-serif;
+  pointer-events: none; /* Supaya klik-an tidak terhalang tulisan */
+  z-index: 999; /* Memastikan tulisan ada di paling depan */
+}
+</style>
+</head>
+
+<body>
+  
+  <div id="blackScreen"></div>
+  
+  <div class="watermark-baru">@widget1</div>
+<!-- AUDIO -->
+<audio id="bgMusic" loop>
+  <source src="Harry_Potter.aac" type="audio/aac">
+</audio>
+<audio id="houseMusic"></audio>
+
+<div class="box">
+
+<!-- INTRO -->
+<div id="intro">
+  <div style="margin-bottom:10px;">
+    <strong>! WELCOME !</strong><br>
+    TO HOGWARTS SELECTION
+  </div>
+  <img src="logo.jpeg" class="logo">
+  <button onclick="startIntro()">CLICK MULAI</button>
+</div>
+
+<!-- USER -->
+<div id="user" style="display:none;">
+  <h2>Masukkan Data</h2>
+  <input id="username" placeholder="Username">
+  <input id="userid" placeholder="ID">
+  <p id="errorText">Isi dulu form</p>
+  <button onclick="startQuiz()">Lanjut</button>
+</div>
+
+<!-- QUIZ -->
+<div id="quiz" style="display:none;">
+  <h3 id="question"></h3>
+  <div id="answers"></div>
+</div>
+
+<!-- RESULT -->
+<div id="result" style="display:none;">
+  <div id="finalText"></div>
+  <img id="finalImg" class="house-img">
+  <div id="finalUser"></div>
+</div>
+
+</div>
+
+<script>
+const bgMusic = document.getElementById("bgMusic");
+const houseMusic = document.getElementById("houseMusic");
+const black = document.getElementById("blackScreen");
+
+let index = 0;
+let usernameSaved = "";
+let score = {
+  gryffindor: 0,
+  slytherin: 0,
+  hufflepuff: 0,
+  ravenclaw: 0
+};
+
+const questions = [
+  { q:"Kamu lebih suka menghabiskan waktu dengan…", a:[
+    {t:"Teman dekat",h:"hufflepuff"},
+    {t:"Mengerjakan ide sendiri",h:"ravenclaw"},
+    {t:"Tantangan baru",h:"gryffindor"},
+    {t:"Merencanakan masa depan",h:"slytherin"}
+  ]},
+  { q:"Jika ada masalah, kamu cenderung…", a:[
+    {t:"Berpikir dulu",h:"ravenclaw"},
+    {t:"Langsung bertindak",h:"gryffindor"},
+    {t:"Mencari bantuan",h:"hufflepuff"},
+    {t:"Mencari keuntungan",h:"slytherin"}
+  ]},
+  { q:"Orang lain mengenalmu sebagai…", a:[
+    {t:"Cerdas",h:"ravenclaw"},
+    {t:"Berani",h:"gryffindor"},
+    {t:"Setia",h:"hufflepuff"},
+    {t:"Ambisius",h:"slytherin"}
+  ]},
+  { q:"Kamu paling tidak suka…", a:[
+    {t:"Ketidakadilan",h:"hufflepuff"},
+    {t:"Kebodohan",h:"ravenclaw"},
+    {t:"Rasa takut",h:"gryffindor"},
+    {t:"Kegagalan",h:"slytherin"}
+  ]},
+  { q:"Kamu lebih memilih…", a:[
+    {t:"Belajar hal baru",h:"ravenclaw"},
+    {t:"Melindungi orang lain",h:"gryffindor"},
+    {t:"Bekerja tim",h:"hufflepuff"},
+    {t:"Menjadi pemimpin",h:"slytherin"}
+  ]},
+  { q:"Saat bekerja kelompok, kamu biasanya…", a:[
+    {t:"Pengatur strategi",h:"slytherin"},
+    {t:"Pemberi ide",h:"ravenclaw"},
+    {t:"Penyemangat",h:"gryffindor"},
+    {t:"Penjaga kekompakan",h:"hufflepuff"}
+  ]},
+  { q:"Kamu merasa bangga jika…", a:[
+    {t:"Membantu orang",h:"hufflepuff"},
+    {t:"Menang",h:"gryffindor"},
+    {t:"Berhasil meraih target",h:"slytherin"},
+    {t:"Memahami sesuatu yang sulit",h:"ravenclaw"}
+  ]},
+  { q:"Dalam tekanan kamu tetap…", a:[
+    {t:"Tenang dan berpikir",h:"ravenclaw"},
+    {t:"Berani maju",h:"gryffindor"},
+    {t:"Bertahan bersama tim",h:"hufflepuff"},
+    {t:"Fokus tujuan",h:"slytherin"}
+  ]},
+  { q:"Kamu paling menghargai…", a:[
+    {t:"Kesetiaan",h:"hufflepuff"},
+    {t:"Keberanian",h:"gryffindor"},
+    {t:"Kecerdasan",h:"ravenclaw"},
+    {t:"Ambisi",h:"slytherin"}
+  ]},
+  { q:"Jika gagal, kamu akan…", a:[
+    {t:"Belajar dari kesalahan",h:"ravenclaw"},
+    {t:"Mencoba lagi",h:"gryffindor"},
+    {t:"Minta dukungan",h:"hufflepuff"},
+    {t:"Cari cara lain",h:"slytherin"}
+  ]},
+  { q:"Kamu dikenal sebagai orang yang…", a:[
+    {t:"Pekerja keras",h:"hufflepuff"},
+    {t:"Berani ambil risiko",h:"gryffindor"},
+    {t:"Cerdas mengambil keputusan",h:"ravenclaw"},
+    {t:"Punya tujuan jelas",h:"slytherin"}
+  ]},
+  { q:"Dalam hidup kamu lebih fokus pada…", a:[
+    {t:"Pengetahuan",h:"ravenclaw"},
+    {t:"Persahabatan",h:"hufflepuff"},
+    {t:"Keberhasilan",h:"slytherin"},
+    {t:"Pengalaman",h:"gryffindor"}
+  ]},
+  { q:"Kamu paling nyaman saat…", a:[
+    {t:"Merencanakan sesuatu",h:"slytherin"},
+    {t:"Belajar",h:"ravenclaw"},
+    {t:"Bersama teman",h:"hufflepuff"},
+    {t:"Mencoba hal baru",h:"gryffindor"}
+  ]},
+  { q:"Kamu lebih memilih dikenal sebagai…", a:[
+    {t:"Orang baik",h:"hufflepuff"},
+    {t:"Orang pintar",h:"ravenclaw"},
+    {t:"Orang sukses",h:"slytherin"},
+    {t:"Orang berani",h:"gryffindor"}
+  ]},
+  { q:"Saat melihat ketidakadilan kamu…", a:[
+    {t:"Melawan",h:"gryffindor"},
+    {t:"Membela yang lemah",h:"hufflepuff"},
+    {t:"Mencari solusi",h:"ravenclaw"},
+    {t:"Mengatur strategi",h:"slytherin"}
+  ]}
+];
+
+function shuffle(arr){return arr.sort(()=>Math.random()-0.5);}
+
+function transition(action){
+  black.classList.add("active");
+  setTimeout(()=>{action();black.classList.remove("active");},1500);
+}
+
+function startIntro(){
+  bgMusic.volume=0.5;
+  bgMusic.play();
+  transition(()=>{
+    intro.style.display="none";
+    user.style.display="block";
+  });
+}
+
+function startQuiz(){
+  const name=username.value.trim();
+  const id=userid.value.trim();
+  if(!name||!id){errorText.style.display="block";return;}
+  usernameSaved=name;
+  errorText.style.display="none";
+  transition(()=>{
+    user.style.display="none";
+    quiz.style.display="block";
+    loadQuestion();
+  });
+}
+
+function loadQuestion(){
+  if(index>=questions.length){showResult();return;}
+  const q=questions[index];
+  question.innerText=q.q;
+  answers.innerHTML="";
+  shuffle(q.a).forEach(ans=>{
+    const b=document.createElement("button");
+    b.innerText=ans.t;
+    b.onclick=()=>{score[ans.h]++;index++;transition(loadQuestion);};
+    answers.appendChild(b);
+  });
+}
+
+function showResult(){
+  transition(()=>{
+    const house=Object.keys(score).reduce((a,b)=>score[a]>score[b]?a:b);
+    document.body.style.background=`url("${house}_bg.jpeg") center/cover no-repeat`;
+    houseMusic.src=house+".aac";
+    houseMusic.play();
+    quiz.style.display="none";
+    result.style.display="block";
+    finalText.innerHTML="!CONGRATS!<br>YOU IN "+house.toUpperCase();
+    finalImg.src=house+".jpeg";
+    finalUser.innerText=usernameSaved;
+  });
+}
+</script>
+
+</body>
+</html>
